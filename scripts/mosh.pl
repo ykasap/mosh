@@ -78,6 +78,7 @@ my $port_request = undef;
 my @ssh = ('ssh');
 
 my $term_init = 1;
+my $cjkwidth = (($ENV{LC_ALL} || $ENV{LC_CTYPE} || $ENV{LANG}) =~ /^(?:ja|ko|zh)(?:_|$)/);
 
 my $localhost = undef;
 
@@ -117,6 +118,8 @@ qq{Usage: $0 [options] [--] [user@]host [command...]
         --ssh=COMMAND        ssh command to run when setting up session
                                 (example: "ssh -p 2222")
                                 (default: "ssh")
+-w      --cjkwidth           treat East Asian ambiguous characters as wide
+                                (default: on under CJK locales)
 
         --no-ssh-pty         do not allocate a pseudo tty on ssh connection
 
@@ -167,6 +170,7 @@ GetOptions( 'client=s' => \$client,
 	    'ssh-pty!' => \$ssh_pty,
 	    'init!' => \$term_init,
 	    'local' => \$localhost,
+	    'w|cjkwidth' => \$cjkwidth,
 	    'help' => \$help,
 	    'version' => \$version,
 	    'fake-proxy!' => \my $fake_proxy,
@@ -378,6 +382,8 @@ if ( $pid == 0 ) { # child
 
   push @server, ( '-c', $colors );
 
+  push @server, '-w' if $cjkwidth;
+
   push @server, @bind_arguments;
 
   if ( defined $port_request ) {
@@ -459,6 +465,11 @@ if ( $pid == 0 ) { # child
   }
 
   # Now start real mosh client
+  if ($cjkwidth) {
+      $ENV{ 'MOSH_CJKWIDTH' } = 'on';
+  } else {
+      delete $ENV{ 'MOSH_CJKWIDTH' };
+  }
   $ENV{ 'MOSH_KEY' } = $key;
   $ENV{ 'MOSH_PREDICTION_DISPLAY' } = $predict;
   $ENV{ 'MOSH_NO_TERM_INIT' } = '1' if !$term_init;
